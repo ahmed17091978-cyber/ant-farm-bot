@@ -117,36 +117,40 @@ def handle_buttons(call):
     
     update_profit(user_id)
     user = get_user(user_id)
-    
+
         if call.data == "buy_ant":
-        import urllib.request
+        import subprocess
         import json
-        import ssl
         
         url = "https://testnet-pay.cryptobot.net/api/createInvoice"
-        headers = {
-            "Crypto-Pay-API-Token": CRYPTO_TOKEN,
-            "Content-Type": "application/json"
-        }
         payload = {
             "asset": "USDT",
             "amount": "1",
             "description": f"Покупка 1 муравья для игрока {user_id}",
             "payload": str(user_id)
         }
+        
+        # Формируем команду curl в виде списка аргументов
+        cmd = [
+            "curl",
+            "-X", "POST",
+            url,
+            "-H", f"Crypto-Pay-API-Token: {CRYPTO_TOKEN}",
+            "-H", "Content-Type: application/json",
+            "-d", json.dumps(payload),
+            "--silent",       # Не выводить лишний прогресс в логи
+            "--max-time", "15" # Тайм-аут 15 секунд
+        ]
+        
         try:
-            data = json.dumps(payload).encode('utf-8')
-            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-            
-            context = ssl._create_unverified_context()
-            
-            with urllib.request.urlopen(req, timeout=10, context=context) as response:
-                res = json.loads(response.read().decode('utf-8'))
-            
-            # --- ОТЛАДКА: Бот в любом случае покажет, что ответил сервер ---
-            bot.send_message(call.message.chat.id, f"🔍 Ответ сервера: {json.dumps(res, ensure_ascii=False)}")
+            # Запускаем curl и собираем ответ
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            res = json.loads(result.stdout)
             
             if not res.get("ok"):
+                error_details = res.get("error", {})
+                error_msg = f"❌ Ошибка Crypto Bot API:\nКод: {error_details.get('code')}\nОписание: {error_details.get('name')}"
+                bot.send_message(call.message.chat.id, error_msg)
                 return
 
             pay_url = res["result"]["pay_url"]
@@ -158,10 +162,12 @@ def handle_buttons(call):
             
             threading.Thread(target=check_payment, args=(invoice_id, user_id, call.message.chat.id), daemon=True).start()
             
+        except subprocess.CalledProcessError as e:
+            # Если curl упал, выводим его системную ошибку
+            bot.send_message(call.message.chat.id, f"💥 Системная ошибка curl: {e.stderr}")
         except Exception as e:
-            bot.send_message(call.message.chat.id, f"💥 Ошибка сети: {str(e)}")
+            bot.send_message(call.message.chat.id, f"💥 Критическая ошибка: {str(e)}")
 
-    
 
             
     elif call.data == "collect_profit":
@@ -202,31 +208,38 @@ def handle_buttons(call):
             bot.answer_callback_query(call.id, "❌ У вас нет муравьев!", show_alert=True)
 
 def check_payment(invoice_id, user_id, chat_id):
-    import ssl
-    headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
+    import subprocess
+    import json
     url = f"https://testnet-pay.cryptobot.net/api/getInvoices?invoice_ids={invoice_id}"
-    context = ssl._create_unverified_context()
+    cmd = [
+        "curl",
+        "-X", "GET",
+        url,
+        "-H", f"Crypto-Pay-API-Token: {CRYPTO_TOKEN}",
+        "--silent",
+        "--max-time", "10"
+    ]
     for _ in range(30):
         time.sleep(10)
         try:
-            req = urllib.request.Request(url, headers=headers, method="GET")
-            with urllib.request.urlopen(req, timeout=10, context=context) as response:
-                res = json.loads(response.read().decode('utf-8'))
-                
-            if res.get("result") and res["result"]["items"]:
-                status = res["result"]["items"][0]["status"]
-                if status == "paid":
-                    user = get_user(user_id)
-                    user['ants'] += 1
-                    user['deposit'] += 1.0
-                    user['last_update'] = time.time()
-                    save_user(user_id, user)
-                    bot.send_message(chat_id, "🎉 Муравей зачислен! Нажмите /start для обновления.")
-                    break
-                elif status not in ["active", "paid"]:
-                    break
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                res = json.loads(result.stdout)
+                if res.get("result") and res["result"]["items"]:
+                    status = res["result"]["items"][0]["status"]
+                    if status == "paid":
+                        user = get_user(user_id)
+                        user['ants'] += 1
+                        user['deposit'] += 1.0
+                        user['last_update'] = time.time()
+                        save_user(user_id, user)
+                        bot.send_message(chat_id, "🎉 Муравей зачислен! Нажмите /start для обновления.")
+                        break
+                    elif status not in ["active", "paid"]:
+                        break
         except:
             pass
+
 
 
 if __name__ == "__main__":
