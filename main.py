@@ -118,8 +118,14 @@ def handle_buttons(call):
     update_profit(user_id)
     user = get_user(user_id)
     
-    if call.data == "buy_ant":
-        # Пробуем отправить запрос в Crypto Bot (Mainnet)
+        if call.data == "buy_ant":
+        # Создаем сессию и принудительно заставляем её использовать правильный SSL/TLS
+        session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(max_retries=3)
+        session.mount("https://", adapter)
+        
+        # Если у тебя токен из @CryptoTestnetBot, оставляем testnet-pay. 
+        # Если из реального @CryptoBot, поменяй обратно на pay.cryptobot.net
         url = "https://testnet-pay.cryptobot.net/api/createInvoice"
         headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
         payload = {
@@ -129,7 +135,8 @@ def handle_buttons(call):
             "payload": str(user_id)
         }
         try:
-            res = requests.post(url, json=payload, headers=headers).json()
+            # Делаем запрос через настроенную сессию
+            res = session.post(url, json=payload, headers=headers, timeout=10).json()
             
             if not res.get("ok"):
                 error_details = res.get("error", {})
@@ -148,6 +155,7 @@ def handle_buttons(call):
             
         except Exception as e:
             bot.send_message(call.message.chat.id, f"💥 Критическая ошибка кода: {str(e)}")
+
             
     elif call.data == "collect_profit":
         if user['profit'] > 0:
