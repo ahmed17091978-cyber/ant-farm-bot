@@ -3,15 +3,13 @@ import time
 import sqlite3
 import logging
 import threading
-import json
-import subprocess
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telebot import TeleBot, types
 
 # ==========================================================
-# ТОКЕНЫ НАСТРОЕНЫ И ГОТОВЫ К РАБОТЕ
+# КОНФИГУРАЦИЯ БОТА (НАСТРОЕНО И ГОТОВО)
 BOT_TOKEN = "8832332359:AAHUSy1UHHb6ySbX6nkdEVyfw1hSY3poxzU"
-CRYPTO_TOKEN = "587645:AATJA9zUStPi0qxOHhLZ3N6y3fKtxv7CknZ" 
+ADMIN_USERNAME = "AhmedAli1718" 
 # ==========================================================
 
 bot = TeleBot(BOT_TOKEN)
@@ -23,7 +21,7 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "text/plain; charset=utf-8")
         self.end_headers()
-        self.wfile.write("Бот работает!".encode("utf-8"))
+        self.wfile.write("Бот работает стабильно!".encode("utf-8"))
     def log_message(self, format, *args):
         return
 
@@ -33,7 +31,7 @@ def run_web_server(port):
         logging.info(f"Сервер заглушки запущен на порту {port}")
         server.serve_forever()
     except Exception as e:
-        logging.error(f"Ошибка сервера заглушки: {e}")
+        logging.error(f"Ошибка сервера: {e}")
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -101,13 +99,44 @@ def start_game(message):
     user = get_user(user_id)
     
     text = (
-        f"🐜 **Добро пожаловать на Муравьиную Ферму! (PROXY ВЕРСИЯ)**\n\n"
+        f"🐜 **Добро пожаловать на Муравьиную Ферму!**\n\n"
         f"📦 Твои муравьи: {user['ants']} шт.\n"
         f"🔒 Депозит: {user['deposit']:.2f} USDT\n"
         f"💰 Прибыль: {user['profit']:.6f} USDT\n\n"
-        f"_Прибыль начисляется в реальном времени (10% годовых)!_"
+        f"_Прибыль начисляется в реальном времени (10% годовых)!_\n\n"
+        f"🆔 Твой ID для покупки муравьев: `{user_id}`"
     )
     bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=get_main_keyboard())
+
+# КОМАНДА ДЛЯ ТЕБЯ (АДМИНА): Начисление муравьев по ID.
+# Писать прямо в чат бота. Пример: /give 12345678
+@bot.message_handler(commands=['give'])
+def admin_give(message):
+    try:
+        args = message.text.split()
+        if len(args) < 2:
+            bot.reply_to(message, "❌ Используй: /give ID_ПОЛЬЗОВАТЕЛЯ")
+            return
+            
+        target_id = int(args[1])
+        user = get_user(target_id)
+        if not user:
+            user = {'ants': 0, 'deposit': 0.0, 'profit': 0.0, 'last_update': time.time()}
+        
+        update_profit(target_id)
+        user = get_user(target_id)
+        user['ants'] += 1
+        user['deposit'] += 1.0
+        user['last_update'] = time.time()
+        save_user(target_id, user)
+        
+        bot.reply_to(message, f"✅ Успешно начислен 1 муравей игроку {target_id}!")
+        try:
+            bot.send_message(target_id, "🎉 Администратор зачислил вам 1 муравья! Нажмите /start для обновления баланса.")
+        except:
+            pass
+    except Exception as e:
+        bot.reply_to(message, f"❌ Ошибка: {e}")
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_buttons(call):
@@ -120,59 +149,17 @@ def handle_buttons(call):
     user = get_user(user_id)
     
     if call.data == "buy_ant":
-        url = "https://testnet-pay.cryptobot.net/api/createInvoice"
-        payload = {
-            "asset": "USDT",
-            "amount": "1",
-            "description": f"Покупка 1 муравья для игрока {user_id}",
-            "payload": str(user_id)
-        }
-        
-        # Запускаем curl через стабильный публичный прокси-сервер, обходя блокировку Cloudflare
-        cmd = [
-            "curl",
-            "--proxy", "http://unblock.io.com:8031", # Резервный прокси туннель
-            "-X", "POST",
-            url,
-            "-H", f"Crypto-Pay-API-Token: {CRYPTO_TOKEN}",
-            "-H", "Content-Type: application/json",
-            "-d", json.dumps(payload),
-            "--silent",
-            "--max-time", "15",
-            "--insecure"
-        ]
-        
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-            # Если первый прокси занят, пускаем через гарантированный чистый IPv4-прокси
-            if result.returncode != 0 or not result.stdout.strip() or "html" in result.stdout:
-                cmd[2] = "http://45.137.60.22:8000" # Чистый рабочий прокси
-                result = subprocess.run(cmd, capture_output=True, text=True)
-
-            if not result.stdout.strip():
-                bot.send_message(call.message.chat.id, "❌ Сбой сети. Попробуйте еще раз через пару секунд.")
-                return
-                
-            res = json.loads(result.stdout)
-            
-            if not res.get("ok"):
-                error_details = res.get("error", {})
-                error_msg = f"❌ Ошибка Crypto Bot API:\nКод: {error_details.get('code')}\nОписание: {error_details.get('name')}"
-                bot.send_message(call.message.chat.id, error_msg)
-                return
-
-            pay_url = res["result"]["pay_url"]
-            invoice_id = res["result"]["invoice_id"]
-            
-            kb = types.InlineKeyboardMarkup()
-            kb.add(types.InlineKeyboardButton(text="💳 Оплатить 1 USDT (Testnet)", url=pay_url))
-            bot.send_message(call.message.chat.id, "Ссылка на оплату успешно сгенерирована через прокси!", reply_markup=kb)
-            
-            threading.Thread(target=check_payment, args=(invoice_id, user_id, call.message.chat.id), daemon=True).start()
-            
-        except Exception as e:
-            bot.send_message(call.message.chat.id, f"💥 Критическая ошибка системы: {str(e)}")
+        text_pay = (
+            f"💳 **Инструкция по покупке муравья (1 USDT):**\n\n"
+            f"1️⃣ Перейди в свой кошелек: @CryptoBot\n"
+            f"2️⃣ Создай **Текстовый чек (Crypto Check)** на сумму **1 USDT**\n"
+            f"3️⃣ Отправь созданный чек администратору: @{ADMIN_USERNAME}\n\n"
+            f"⚠️ В поле 'Комментарий' к чеку обязательно укажи свой ID: `{user_id}`\n\n"
+            f"После проверки администратор мгновенно начислит муравья на твою ферму!"
+        )
+        kb = types.InlineKeyboardMarkup()
+        kb.add(types.InlineKeyboardButton(text="Открыть @CryptoBot", url="https://t.me/CryptoBot"))
+        bot.send_message(call.message.chat.id, text_pay, parse_mode="Markdown", reply_markup=kb)
             
     elif call.data == "collect_profit":
         if user['profit'] > 0:
@@ -210,39 +197,6 @@ def handle_buttons(call):
             )
         else:
             bot.answer_callback_query(call.id, "❌ У вас нет муравьев!", show_alert=True)
-
-def check_payment(invoice_id, user_id, chat_id):
-    url = f"https://testnet-pay.cryptobot.net/api/getInvoices?invoice_ids={invoice_id}"
-    cmd = [
-        "curl",
-        "--proxy", "http://45.137.60.22:8000",
-        "-X", "GET",
-        url,
-        "-H", f"Crypto-Pay-API-Token: {CRYPTO_TOKEN}",
-        "--silent",
-        "--max-time", "10",
-        "--insecure"
-    ]
-    for _ in range(30):
-        time.sleep(10)
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            if result.returncode == 0 and result.stdout.strip():
-                res = json.loads(result.stdout)
-                if res.get("result") and res["result"]["items"]:
-                    status = res["result"]["items"][0]["status"]
-                    if status == "paid":
-                        user = get_user(user_id)
-                        user['ants'] += 1
-                        user['deposit'] += 1.0
-                        user['last_update'] = time.time()
-                        save_user(user_id, user)
-                        bot.send_message(chat_id, "🎉 Муравей зачислен! Нажмите /start для обновления.")
-                        break
-                    elif status not in ["active", "paid"]:
-                        break
-        except:
-            pass
 
 if __name__ == "__main__":
     init_db()
