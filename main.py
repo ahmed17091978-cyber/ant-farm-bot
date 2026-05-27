@@ -8,7 +8,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from telebot import TeleBot, types
 
 # Токены (Замени BOT_TOKEN на свой НОВЫЙ токен, если изменил его в BotFather)
-BOT_TOKEN = "8832332359:AAFscY6m-tbbffm0Nnwm5UwdDxRoyqn5VLE"
+BOT_TOKEN = BOT_TOKEN = "8832332359:AAHUSy1UHHb6ySbX6nkdEVyfw1hSY3poxzU"
+
 CRYPTO_TOKEN = "587645:AATJA9zUStPi0qxOHhLZ3N6y3fKtxv7CknZ"
 
 bot = TeleBot(BOT_TOKEN)
