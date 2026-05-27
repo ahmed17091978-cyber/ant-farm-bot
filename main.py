@@ -4,7 +4,7 @@ import sqlite3
 import logging
 import threading
 import json
-import urllib.request
+import subprocess
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telebot import TeleBot, types
 
@@ -101,7 +101,7 @@ def start_game(message):
     user = get_user(user_id)
     
     text = (
-        f"🐜 **Добро пожаловать на Муравьиную Ферму! (ОБНОВЛЕНО)**\n\n"
+        f"🐜 **Добро пожаловать на Муравьиную Ферму! (CURL ВЕРСИЯ)**\n\n"
         f"📦 Твои муравьи: {user['ants']} шт.\n"
         f"🔒 Депозит: {user['deposit']:.2f} USDT\n"
         f"💰 Прибыль: {user['profit']:.6f} USDT\n\n"
@@ -113,15 +113,13 @@ def start_game(message):
 def handle_buttons(call):
     user_id = call.from_user.id
     user = get_user(user_id)
-    if not user: return
+    if not user: 
+        return
     
     update_profit(user_id)
     user = get_user(user_id)
-
-        if call.data == "buy_ant":
-        import subprocess
-        import json
-        
+    
+    if call.data == "buy_ant":
         url = "https://testnet-pay.cryptobot.net/api/createInvoice"
         payload = {
             "asset": "USDT",
@@ -130,7 +128,6 @@ def handle_buttons(call):
             "payload": str(user_id)
         }
         
-        # Формируем команду curl в виде списка аргументов
         cmd = [
             "curl",
             "-X", "POST",
@@ -138,12 +135,11 @@ def handle_buttons(call):
             "-H", f"Crypto-Pay-API-Token: {CRYPTO_TOKEN}",
             "-H", "Content-Type: application/json",
             "-d", json.dumps(payload),
-            "--silent",       # Не выводить лишний прогресс в логи
-            "--max-time", "15" # Тайм-аут 15 секунд
+            "--silent",
+            "--max-time", "15"
         ]
         
         try:
-            # Запускаем curl и собираем ответ
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             res = json.loads(result.stdout)
             
@@ -163,12 +159,9 @@ def handle_buttons(call):
             threading.Thread(target=check_payment, args=(invoice_id, user_id, call.message.chat.id), daemon=True).start()
             
         except subprocess.CalledProcessError as e:
-            # Если curl упал, выводим его системную ошибку
             bot.send_message(call.message.chat.id, f"💥 Системная ошибка curl: {e.stderr}")
         except Exception as e:
             bot.send_message(call.message.chat.id, f"💥 Критическая ошибка: {str(e)}")
-
-
             
     elif call.data == "collect_profit":
         if user['profit'] > 0:
@@ -208,8 +201,6 @@ def handle_buttons(call):
             bot.answer_callback_query(call.id, "❌ У вас нет муравьев!", show_alert=True)
 
 def check_payment(invoice_id, user_id, chat_id):
-    import subprocess
-    import json
     url = f"https://testnet-pay.cryptobot.net/api/getInvoices?invoice_ids={invoice_id}"
     cmd = [
         "curl",
@@ -239,8 +230,6 @@ def check_payment(invoice_id, user_id, chat_id):
                         break
         except:
             pass
-
-
 
 if __name__ == "__main__":
     init_db()
