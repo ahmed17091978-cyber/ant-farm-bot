@@ -3,12 +3,12 @@ import time
 import sqlite3
 import logging
 import requests
-import threading  # Перенесли импорт на самый верх, чтобы не было ошибок сборки
+import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telebot import TeleBot, types
 
-# Токены
-BOT_TOKEN = "8832332359:AAFscY6m-tbbffm0Nnwm5UwdDxRoyqn5VLE"
+# ВСТАВЬ СЮДА СВОЙ НОВЫЙ ТОКЕН ИЗ BOTFATHER
+BOT_TOKEN = "8832332359:AAHUSy1UHHb6ySbX6nkdEVyfw1hSY3poxzU"
 CRYPTO_TOKEN = "587645:AATJA9zUStPi0qxOHhLZ3N6y3fKtxv7CknZ"
 
 bot = TeleBot(BOT_TOKEN)
@@ -22,9 +22,8 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.send_header("Content-type", "text/plain; charset=utf-8")
         self.end_headers()
         self.wfile.write("Бот Муравьиная Ферма работает!".encode("utf-8"))
-
     def log_message(self, format, *args):
-        return  # Отключаем лишний спам логов сервера в консоль Render
+        return
 
 def run_web_server(port):
     server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
@@ -84,7 +83,8 @@ def get_main_keyboard():
     keyboard = types.InlineKeyboardMarkup(row_width=1)
     btn_buy = types.InlineKeyboardButton(text="➕ Купить муравья (1 USDT)", callback_data="buy_ant")
     btn_collect = types.InlineKeyboardButton(text="💸 Снять прибыль", callback_data="collect_profit")
-    keyboard.add(btn_buy, btn_collect)
+    btn_sell = types.InlineKeyboardButton(text="🚪 Продать 1 муравья (Вернуть 1$)", callback_data="sell_ant")
+    keyboard.add(btn_buy, btn_collect, btn_sell)  # Добавили третью кнопку
     return keyboard
 
 @bot.message_handler(commands=['start'])
@@ -116,7 +116,6 @@ def handle_buttons(call):
     user = get_user(user_id)
     
     if call.data == "buy_ant":
-        # Создаем реальный счет в Crypto Bot на 1 USDT
         url = "https://pay.crypton.sh/api/createInvoice"
         headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
         payload = {
@@ -146,8 +145,38 @@ def handle_buttons(call):
             user['last_update'] = time.time()
             save_user(user_id, user)
             bot.answer_callback_query(call.id, f"💰 Снято {collected:.6f} USDT прибыли!", show_alert=True)
+            # Обновляем главное меню у игрока
+            bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text=f"🐜 **Муравьиная Ферма**\n\n📦 Твои муравьи: {user['ants']} шт.\n🔒 Депозит: {user['deposit']:.2f} USDT\n💰 Прибыль: {user['profit']:.6f} USDT",
+                parse_mode="Markdown",
+                reply_markup=get_main_keyboard()
+            )
         else:
             bot.answer_callback_query(call.id, "❌ Еще нет прибыли.", show_alert=True)
+
+    # --- НОВАЯ ЛОГИКА ПРОДАЖИ МУРАВЬЯ ---
+    elif call.data == "sell_ant":
+        if user['ants'] > 0:
+            user['ants'] -= 1
+            user['deposit'] -= 1.0
+            user['profit'] += 1.0  # Возвращаем 1$ на счет прибыли (доступный к выводу)
+            user['last_update'] = time.time()
+            save_user(user_id, user)
+            
+            bot.answer_callback_query(call.id, "🚪 Муравей успешно продан! 1 USDT возвращен на баланс.", show_alert=True)
+            
+            # Сразу обновляем сообщение на экране у пользователя
+            bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text=f"🐜 **Муравьиная Ферма**\n\n📦 Твои муравьи: {user['ants']} шт.\n🔒 Депозит: {user['deposit']:.2f} USDT\n💰 Прибыль: {user['profit']:.6f} USDT",
+                parse_mode="Markdown",
+                reply_markup=get_main_keyboard()
+            )
+        else:
+            bot.answer_callback_query(call.id, "❌ У вас нет муравьев для продажи!", show_alert=True)
 
 def check_payment(invoice_id, user_id, chat_id):
     headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
@@ -174,11 +203,7 @@ def check_payment(invoice_id, user_id, chat_id):
 
 if __name__ == "__main__":
     init_db()
-    
-    # Получаем порт от хостинга Render
     port = int(os.environ.get("PORT", 5000))
-    
-    # Запускаем веб-сервер в отдельном независимом потоке
     web_thread = threading.Thread(target=run_web_server, args=(port,), daemon=True)
     web_thread.start()
     
