@@ -120,7 +120,7 @@ def handle_buttons(call):
     
     if call.data == "buy_ant":
         # Пробуем отправить запрос в Crypto Bot (Mainnet)
-        url = "https://pay.cryptobot.net/api/createInvoice"
+        url = "https://testnet-pay.cryptobot.net/api/createInvoice"
         headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
         payload = {
             "asset": "USDT",
@@ -188,7 +188,7 @@ def handle_buttons(call):
 
 def check_payment(invoice_id, user_id, chat_id):
     headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
-    url = f"https://pay.cryptobot.net/api/getInvoices?invoice_ids={invoice_id}"
+    url = f"https://testnet-pay.cryptobot.net/api/getInvoices?invoice_ids={invoice_id}"
     for _ in range(30):
         time.sleep(10)
         try:
