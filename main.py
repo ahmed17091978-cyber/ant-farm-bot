@@ -7,9 +7,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from telebot import TeleBot, types
 
 # ==========================================================
-# КОНФИГУРАЦИЯ БОТА (НАСТРОЕНО И ГОТОВО)
-BOT_TOKEN = "8832332359:AAHUSy1UHHb6ySbX6nkdEVyfw1hSY3poxzU"
+# КОНФИГУРАЦИЯ БОТА (НОВЫЙ ТОКЕН УСПЕШНО ВПИСАН)
+BOT_TOKEN = "8832332359:AAExrXoFwAUbcaV2ZKiCZ8mFrcDhj0z3mZQ"
 ADMIN_USERNAME = "AhmedAli1718" 
+ADMIN_ID = 784188637  
 # ==========================================================
 
 bot = TeleBot(BOT_TOKEN)
@@ -108,10 +109,12 @@ def start_game(message):
     )
     bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=get_main_keyboard())
 
-# КОМАНДА ДЛЯ ТЕБЯ (АДМИНА): Начисление муравьев по ID.
-# Писать прямо в чат бота. Пример: /give 12345678
 @bot.message_handler(commands=['give'])
 def admin_give(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ У вас нет прав администратора для этой команды!")
+        return
+
     try:
         args = message.text.split()
         if len(args) < 2:
