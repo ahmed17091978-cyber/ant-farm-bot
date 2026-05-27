@@ -3,6 +3,8 @@ import time
 import sqlite3
 import logging
 import requests
+import threading  # Перенесли импорт на самый верх, чтобы не было ошибок сборки
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from telebot import TeleBot, types
 
 # Токены
@@ -12,6 +14,23 @@ CRYPTO_TOKEN = "587645:AATJA9zUStPi0qxOHhLZ3N6y3fKtxv7CknZ"
 bot = TeleBot(BOT_TOKEN)
 DB_FILE = "tg_game_bot.db"
 logging.basicConfig(level=logging.INFO)
+
+# --- ВЕБ-СЕРВЕР ДЛЯ ОБМАНА RENDER ---
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write("Бот Муравьиная Ферма работает!".encode("utf-8"))
+
+    def log_message(self, format, *args):
+        return  # Отключаем лишний спам логов сервера в консоль Render
+
+def run_web_server(port):
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    logging.info(f"Веб-сервер заглушки запущен на порту {port}")
+    server.serve_forever()
+# -------------------------------------
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -104,7 +123,7 @@ def handle_buttons(call):
             "asset": "USDT",
             "amount": "1.00",
             "description": f"Покупка 1 муравья для игрока {user_id}",
-            "payload": str(user_id) # Запоминаем ID, чтобы знать кому выдать муравья
+            "payload": str(user_id)
         }
         try:
             res = requests.post(url, json=payload, headers=headers).json()
@@ -112,13 +131,11 @@ def handle_buttons(call):
                 pay_url = res["result"]["pay_url"]
                 invoice_id = res["result"]["invoice_id"]
                 
-                # Отправляем кнопку оплаты игроку
                 kb = types.InlineKeyboardMarkup()
                 kb.add(types.InlineKeyboardButton(text="💳 Оплатить 1 USDT", url=pay_url))
                 bot.send_message(call.message.chat.id, "Ссылка на оплату сгенерирована! После оплаты муравей зачислится в течение пары минут.", reply_markup=kb)
                 
-                # Запускаем фоновую проверку оплаты (для теста упрощенная логика)
-                threading.Thread(target=check_payment, args=(invoice_id, user_id, call.message.chat.id)).start()
+                threading.Thread(target=check_payment, args=(invoice_id, user_id, call.message.chat.id), daemon=True).start()
         except Exception as e:
             bot.answer_callback_query(call.id, "Ошибка генерации счета.")
             
@@ -132,13 +149,10 @@ def handle_buttons(call):
         else:
             bot.answer_callback_query(call.id, "❌ Еще нет прибыли.", show_alert=True)
 
-import threading
 def check_payment(invoice_id, user_id, chat_id):
-    """Функция проверки платежа"""
     headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
     url = f"https://pay.crypton.sh/api/getInvoices?invoice_ids={invoice_id}"
     
-    # Проверяем счет раз в 10 секунд на протяжении 5 минут
     for _ in range(30):
         time.sleep(10)
         try:
@@ -146,7 +160,6 @@ def check_payment(invoice_id, user_id, chat_id):
             if res.get("result") and res["result"]["items"]:
                 status = res["result"]["items"][0]["status"]
                 if status == "paid":
-                    # Начисляем муравья!
                     user = get_user(user_id)
                     user['ants'] += 1
                     user['deposit'] += 1.0
@@ -154,15 +167,20 @@ def check_payment(invoice_id, user_id, chat_id):
                     save_user(user_id, user)
                     bot.send_message(chat_id, "🎉 Оплата получена! Вам зачислен 1 муравей. Напишите /start для обновления.")
                     break
-                elif status in ["expired", "active"] == False:
+                elif status not in ["active", "paid"]:
                     break
         except:
             pass
 
 if __name__ == "__main__":
     init_db()
-    # Заглушка порта для Render
+    
+    # Получаем порт от хостинга Render
     port = int(os.environ.get("PORT", 5000))
-    print("Бот Муравьиная Ферма на Render запущен!")
+    
+    # Запускаем веб-сервер в отдельном независимом потоке
+    web_thread = threading.Thread(target=run_web_server, args=(port,), daemon=True)
+    web_thread.start()
+    
+    print("Бот Муравьиная Ферма успешно запущен!")
     bot.infinity_polling()
-  
