@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from telebot import TeleBot, types
 
 # ==========================================================
-# КОНФИГУРАЦИЯ БОТА (НОВЫЙ ТОКЕН УСПЕШНО ВПИСАН)
+# КОНФИГУРАЦИЯ БОТА (НОВЫЙ БЕЗОПАСНЫЙ ТОКЕН ВПИСАН)
 BOT_TOKEN = "8832332359:AAHZg3aOQRo3jZf1S-jedGnQYnrodAbCAw0"
 ADMIN_USERNAME = "AhmedAli1718" 
 ADMIN_ID = 784188637  
@@ -109,6 +109,7 @@ def start_game(message):
     )
     bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=get_main_keyboard())
 
+# АДМИН-КОМАНДА С ПОДДЕРЖКОЙ ЛЮБОГО КОЛИЧЕСТВА
 @bot.message_handler(commands=['give'])
 def admin_give(message):
     if message.from_user.id != ADMIN_ID:
@@ -118,24 +119,31 @@ def admin_give(message):
     try:
         args = message.text.split()
         if len(args) < 2:
-            bot.reply_to(message, "❌ Используй: /give ID_ПОЛЬЗОВАТЕЛЯ")
+            bot.reply_to(message, "❌ Используй: /give ID [количество]\nПример: /give 784188637 100")
             return
             
         target_id = int(args[1])
+        amount = int(args[2]) if len(args) >= 3 else 1
+        
+        if amount <= 0:
+            bot.reply_to(message, "❌ Количество должно быть больше 0!")
+            return
+
         user = get_user(target_id)
         if not user:
             user = {'ants': 0, 'deposit': 0.0, 'profit': 0.0, 'last_update': time.time()}
         
         update_profit(target_id)
         user = get_user(target_id)
-        user['ants'] += 1
-        user['deposit'] += 1.0
+        
+        user['ants'] += amount
+        user['deposit'] += float(amount)
         user['last_update'] = time.time()
         save_user(target_id, user)
         
-        bot.reply_to(message, f"✅ Успешно начислен 1 муравей игроку {target_id}!")
+        bot.reply_to(message, f"✅ Успешно зачислено {amount} шт. муравьев игроку {target_id}!")
         try:
-            bot.send_message(target_id, "🎉 Администратор зачислил вам 1 муравья! Нажмите /start для обновления баланса.")
+            bot.send_message(target_id, f"🎉 Администратор зачислил вам {amount} шт. муравьев! Нажмите /start для обновления баланса.")
         except:
             pass
     except Exception as e:
