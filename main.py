@@ -2,14 +2,14 @@ import os
 import time
 import sqlite3
 import logging
-import requests
 import threading
+import json
+import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telebot import TeleBot, types
 
-# Токены (Замени BOT_TOKEN на свой НОВЫЙ токен, если изменил его в BotFather)
-BOT_TOKEN = BOT_TOKEN = "8832332359:AAHUSy1UHHb6ySbX6nkdEVyfw1hSY3poxzU"
-
+# Токены (Твой актуальный токен бота и токен CryptoBot)
+BOT_TOKEN = "8832332359:AAHUSy1UHHb6ySbX6nkdEVyfw1hSY3poxzU"
 CRYPTO_TOKEN = "587645:AATJA9zUStPi0qxOHhLZ3N6y3fKtxv7CknZ"
 
 bot = TeleBot(BOT_TOKEN)
@@ -101,7 +101,7 @@ def start_game(message):
     user = get_user(user_id)
     
     text = (
-        f"🐜 **Добро пожаловать на Муравьиную Ферму!**\n\n"
+        f"🐜 **Добро пожаловать на Муравьиную Ферму! (ОБНОВЛЕНО)**\n\n"
         f"📦 Твои муравьи: {user['ants']} шт.\n"
         f"🔒 Депозит: {user['deposit']:.2f} USDT\n"
         f"💰 Прибыль: {user['profit']:.6f} USDT\n\n"
@@ -118,16 +118,12 @@ def handle_buttons(call):
     update_profit(user_id)
     user = get_user(user_id)
     
-        if call.data == "buy_ant":
-        # Создаем сессию и принудительно заставляем её использовать правильный SSL/TLS
-        session = requests.Session()
-        adapter = requests.adapters.HTTPAdapter(max_retries=3)
-        session.mount("https://", adapter)
-        
-        # Если у тебя токен из @CryptoTestnetBot, оставляем testnet-pay. 
-        # Если из реального @CryptoBot, поменяй обратно на pay.cryptobot.net
+    if call.data == "buy_ant":
         url = "https://testnet-pay.cryptobot.net/api/createInvoice"
-        headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
+        headers = {
+            "Crypto-Pay-API-Token": CRYPTO_TOKEN,
+            "Content-Type": "application/json"
+        }
         payload = {
             "asset": "USDT",
             "amount": "1",
@@ -135,8 +131,12 @@ def handle_buttons(call):
             "payload": str(user_id)
         }
         try:
-            # Делаем запрос через настроенную сессию
-            res = session.post(url, json=payload, headers=headers, timeout=10).json()
+            # Обход SSL ошибки за счет urllib
+            data = json.dumps(payload).encode('utf-8')
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+            
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res = json.loads(response.read().decode('utf-8'))
             
             if not res.get("ok"):
                 error_details = res.get("error", {})
@@ -154,8 +154,7 @@ def handle_buttons(call):
             threading.Thread(target=check_payment, args=(invoice_id, user_id, call.message.chat.id), daemon=True).start()
             
         except Exception as e:
-            bot.send_message(call.message.chat.id, f"💥 Критическая ошибка кода: {str(e)}")
-
+            bot.send_message(call.message.chat.id, f"💥 Критическая ошибка кода (urllib): {str(e)}")
             
     elif call.data == "collect_profit":
         if user['profit'] > 0:
@@ -200,7 +199,10 @@ def check_payment(invoice_id, user_id, chat_id):
     for _ in range(30):
         time.sleep(10)
         try:
-            res = requests.get(url, headers=headers).json()
+            req = urllib.request.Request(url, headers=headers, method="GET")
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res = json.loads(response.read().decode('utf-8'))
+                
             if res.get("result") and res["result"]["items"]:
                 status = res["result"]["items"][0]["status"]
                 if status == "paid":
