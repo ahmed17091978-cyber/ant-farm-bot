@@ -118,7 +118,7 @@ def handle_buttons(call):
     update_profit(user_id)
     user = get_user(user_id)
     
-    if call.data == "buy_ant":
+        if call.data == "buy_ant":
         import urllib.request
         import json
         import ssl
@@ -138,17 +138,15 @@ def handle_buttons(call):
             data = json.dumps(payload).encode('utf-8')
             req = urllib.request.Request(url, data=data, headers=headers, method="POST")
             
-            # Создаем контекст, который игнорирует капризы Cloudflare с unrecognized name
             context = ssl._create_unverified_context()
             
-            # Передаем этот контекст в urlopen
             with urllib.request.urlopen(req, timeout=10, context=context) as response:
                 res = json.loads(response.read().decode('utf-8'))
             
+            # --- ОТЛАДКА: Бот в любом случае покажет, что ответил сервер ---
+            bot.send_message(call.message.chat.id, f"🔍 Ответ сервера: {json.dumps(res, ensure_ascii=False)}")
+            
             if not res.get("ok"):
-                error_details = res.get("error", {})
-                error_msg = f"❌ Ошибка Crypto Bot API:\nКод: {error_details.get('code')}\nОписание: {error_details.get('name')}"
-                bot.send_message(call.message.chat.id, error_msg)
                 return
 
             pay_url = res["result"]["pay_url"]
@@ -161,7 +159,9 @@ def handle_buttons(call):
             threading.Thread(target=check_payment, args=(invoice_id, user_id, call.message.chat.id), daemon=True).start()
             
         except Exception as e:
-            bot.send_message(call.message.chat.id, f"💥 Критическая ошибка кода (urllib + SSL): {str(e)}")
+            bot.send_message(call.message.chat.id, f"💥 Ошибка сети: {str(e)}")
+
+    
 
             
     elif call.data == "collect_profit":
