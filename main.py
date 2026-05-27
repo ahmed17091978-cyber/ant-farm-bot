@@ -119,6 +119,10 @@ def handle_buttons(call):
     user = get_user(user_id)
     
     if call.data == "buy_ant":
+        import urllib.request
+        import json
+        import ssl
+        
         url = "https://testnet-pay.cryptobot.net/api/createInvoice"
         headers = {
             "Crypto-Pay-API-Token": CRYPTO_TOKEN,
@@ -131,11 +135,14 @@ def handle_buttons(call):
             "payload": str(user_id)
         }
         try:
-            # Обход SSL ошибки за счет urllib
             data = json.dumps(payload).encode('utf-8')
             req = urllib.request.Request(url, data=data, headers=headers, method="POST")
             
-            with urllib.request.urlopen(req, timeout=10) as response:
+            # Создаем контекст, который игнорирует капризы Cloudflare с unrecognized name
+            context = ssl._create_unverified_context()
+            
+            # Передаем этот контекст в urlopen
+            with urllib.request.urlopen(req, timeout=10, context=context) as response:
                 res = json.loads(response.read().decode('utf-8'))
             
             if not res.get("ok"):
@@ -154,7 +161,8 @@ def handle_buttons(call):
             threading.Thread(target=check_payment, args=(invoice_id, user_id, call.message.chat.id), daemon=True).start()
             
         except Exception as e:
-            bot.send_message(call.message.chat.id, f"💥 Критическая ошибка кода (urllib): {str(e)}")
+            bot.send_message(call.message.chat.id, f"💥 Критическая ошибка кода (urllib + SSL): {str(e)}")
+
             
     elif call.data == "collect_profit":
         if user['profit'] > 0:
@@ -194,13 +202,15 @@ def handle_buttons(call):
             bot.answer_callback_query(call.id, "❌ У вас нет муравьев!", show_alert=True)
 
 def check_payment(invoice_id, user_id, chat_id):
+    import ssl
     headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
     url = f"https://testnet-pay.cryptobot.net/api/getInvoices?invoice_ids={invoice_id}"
+    context = ssl._create_unverified_context()
     for _ in range(30):
         time.sleep(10)
         try:
             req = urllib.request.Request(url, headers=headers, method="GET")
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=10, context=context) as response:
                 res = json.loads(response.read().decode('utf-8'))
                 
             if res.get("result") and res["result"]["items"]:
@@ -217,6 +227,7 @@ def check_payment(invoice_id, user_id, chat_id):
                     break
         except:
             pass
+
 
 if __name__ == "__main__":
     init_db()
