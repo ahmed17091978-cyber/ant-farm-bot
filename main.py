@@ -115,8 +115,9 @@ def handle_buttons(call):
     update_profit(user_id)
     user = get_user(user_id)
     
-    if call.data == "buy_ant":
-        url = "https://pay.crypton.sh/api/createInvoice"
+        if call.data == "buy_ant":
+        # Используем официальный URL Crypto Pay API
+        url = "https://pay.cryptobot.net/api/createInvoice"
         headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
         payload = {
             "asset": "USDT",
@@ -126,17 +127,26 @@ def handle_buttons(call):
         }
         try:
             res = requests.post(url, json=payload, headers=headers).json()
-            if res.get("result"):
-                pay_url = res["result"]["pay_url"]
-                invoice_id = res["result"]["invoice_id"]
-                
-                kb = types.InlineKeyboardMarkup()
-                kb.add(types.InlineKeyboardButton(text="💳 Оплатить 1 USDT", url=pay_url))
-                bot.send_message(call.message.chat.id, "Ссылка на оплату сгенерирована! После оплаты муравей зачислится в течение пары минут.", reply_markup=kb)
-                
-                threading.Thread(target=check_payment, args=(invoice_id, user_id, call.message.chat.id), daemon=True).start()
+            
+            # Если API вернуло ошибку, запишем её в логи Render
+            if not res.get("ok") or not res.get("result"):
+                logging.error(f"Ошибка Crypto Pay API: {res}")
+                bot.answer_callback_query(call.id, "Ошибка платежной системы.")
+                return
+
+            pay_url = res["result"]["pay_url"]
+            invoice_id = res["result"]["invoice_id"]
+            
+            kb = types.InlineKeyboardMarkup()
+            kb.add(types.InlineKeyboardButton(text="💳 Оплатить 1 USDT", url=pay_url))
+            bot.send_message(call.message.chat.id, "Ссылка на оплату сгенерирована! После оплаты муравей зачислится в течение пары минут.", reply_markup=kb)
+            
+            threading.Thread(target=check_payment, args=(invoice_id, user_id, call.message.chat.id), daemon=True).start()
+            
         except Exception as e:
-            bot.answer_callback_query(call.id, "Ошибка генерации счета.")
+            logging.error(f"Критическая ошибка при создании счета: {e}")
+            bot.answer_callback_query(call.id, "Не удалось связаться с платежкой.")
+
             
     elif call.data == "collect_profit":
         if user['profit'] > 0:
@@ -180,7 +190,8 @@ def handle_buttons(call):
 
 def check_payment(invoice_id, user_id, chat_id):
     headers = {"Crypto-Pay-API-Token": CRYPTO_TOKEN}
-    url = f"https://pay.crypton.sh/api/getInvoices?invoice_ids={invoice_id}"
+    url = f"https://pay.cryptobot.net/api/getInvoices?invoice_ids={invoice_id}"
+
     
     for _ in range(30):
         time.sleep(10)
