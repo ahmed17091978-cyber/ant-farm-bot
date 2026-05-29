@@ -71,13 +71,24 @@ def save_user(user_id, user_data):
 
 def update_profit(user_id):
     user = get_user(user_id)
-    if not user or user['ants'] == 0:
+    if not user:
         return
+    
     now = time.time()
+    # Если это первый заход и счетчик пуст, просто инициализируем время
+    if user['last_update'] == 0.0:
+        user['last_update'] = now
+        save_user(user_id, user)
+        return
+
     elapsed_time = now - user['last_update']
-    profit_per_second_for_one_ant = (1.0 * 0.10) / 365 / 86400
-    total_earned = user['ants'] * profit_per_second_for_one_ant * elapsed_time
-    user['profit'] += total_earned
+    
+    # Начисляем прибыль только если у пользователя есть муравьи и прошло время
+    if user['ants'] > 0 and elapsed_time > 0:
+        profit_per_second_for_one_ant = (1.0 * 0.10) / 365 / 86400
+        total_earned = user['ants'] * profit_per_second_for_one_ant * elapsed_time
+        user['profit'] += total_earned
+
     user['last_update'] = now
     save_user(user_id, user)
 
@@ -96,8 +107,10 @@ def start_game(message):
     if not user:
         user = {'ants': 0, 'deposit': 0.0, 'profit': 0.0, 'last_update': time.time()}
         save_user(user_id, user)
-    update_profit(user_id)
-    user = get_user(user_id)
+    else:
+        # Обновляем прибыль перед выводом на экран
+        update_profit(user_id)
+        user = get_user(user_id)
     
     text = (
         f"🐜 **Добро пожаловать на Муравьиную Ферму!**\n\n"
@@ -132,13 +145,15 @@ def admin_give(message):
         user = get_user(target_id)
         if not user:
             user = {'ants': 0, 'deposit': 0.0, 'profit': 0.0, 'last_update': time.time()}
+            save_user(target_id, user)
         
+        # Сначала фиксируем старую прибыль до изменения количества муравьев
         update_profit(target_id)
         user = get_user(target_id)
         
+        # Добавляем новых муравьев
         user['ants'] += amount
         user['deposit'] += float(amount)
-        user['last_update'] = time.time()
         save_user(target_id, user)
         
         bot.reply_to(message, f"✅ Успешно зачислено {amount} шт. муравьев игроку {target_id}!")
@@ -156,6 +171,7 @@ def handle_buttons(call):
     if not user: 
         return
     
+    # Всегда обновляем прибыль при любом клике на кнопку
     update_profit(user_id)
     user = get_user(user_id)
     
@@ -176,14 +192,13 @@ def handle_buttons(call):
         if user['profit'] > 0:
             collected = user['profit']
             user['profit'] = 0.0
-            user['last_update'] = time.time()
             save_user(user_id, user)
             bot.answer_callback_query(call.id, f"💰 Снято {collected:.6f} USDT прибыли!", show_alert=True)
             
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
-                text=f"🐜 **Муравьиная Ферма**\n\n📦 Твои муравьи: {user['ants']} шт.\n🔒 Депозит: {user['deposit']:.2f} USDT\n💰 Прибыль: {user['profit']:.6f} USDT",
+                text=f"🐜 **Муравьиная Ферма**\n\n📦 Твои муравьи: {user['ants']} шт.\n🔒 Депозит: {user['deposit']:.2f} USDT\n💰 Прибыль: {user['profit']:.6f} USDT\n\n_Прибыль начисляется в реальном времени (10% годовых)!_",
                 parse_mode="Markdown",
                 reply_markup=get_main_keyboard()
             )
@@ -194,15 +209,15 @@ def handle_buttons(call):
         if user['ants'] > 0:
             user['ants'] -= 1
             user['deposit'] -= 1.0
-            user['profit'] += 1.0
-            user['last_update'] = time.time()
+            # Переносим 1$ на баланс прибыли, так как баланса вывода отдельно нет
+            user['profit'] += 1.0 
             save_user(user_id, user)
             bot.answer_callback_query(call.id, "🚪 Муравей успешно продан! 1 USDT возвращен.", show_alert=True)
             
             bot.edit_message_text(
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id,
-                text=f"🐜 **Муравьиная Ферма**\n\n📦 Твои муравьи: {user['ants']} шт.\n🔒 Депозит: {user['deposit']:.2f} USDT\n💰 Прибыль: {user['profit']:.6f} USDT",
+                text=f"🐜 **Муравьиная Ферма**\n\n📦 Твои муравьи: {user['ants']} шт.\n🔒 Депозит: {user['deposit']:.2f} USDT\n💰 Прибыль: {user['profit']:.6f} USDT\n\n_Прибыль начисляется в реальном времени (10% годовых)!_",
                 parse_mode="Markdown",
                 reply_markup=get_main_keyboard()
             )
