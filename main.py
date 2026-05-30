@@ -8,7 +8,7 @@ from telebot import TeleBot, types
 
 # ==========================================================
 # КОНФИГУРАЦИЯ БОТА (НОВЫЙ БЕЗОПАСНЫЙ ТОКЕН ВПИСАН)
-BOT_TOKEN = "8832332359:AAHZg3aOQRo3jZf1S-jedGnQYnrodAbCAw0"
+BOT_TOKEN = "TOKEN_PROTECTED_BY_OWNER"
 ADMIN_USERNAME = "AhmedAli1718" 
 ADMIN_ID = 784188637  
 # ==========================================================
