@@ -3,126 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Сила Муравьев - Ферма</title>
+    <title>Сила Муравьев</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--tg-theme-bg-color, #18222d);
-            color: var(--tg-theme-text-color, #ffffff);
-            text-align: center;
+            background-color: #1c222e;
+            color: #ffffff;
             margin: 0;
             padding: 20px;
-            user-select: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
         .container {
-            max-width: 400px;
-            margin: 0 auto;
-            background: var(--tg-theme-secondary-bg-color, #212d3b);
-            padding: 25px;
+            background-color: #242f3d;
             border-radius: 20px;
+            padding: 25px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
             box-shadow: 0 8px 24px rgba(0,0,0,0.3);
         }
-        h1 { color: #f4c430; font-size: 26px; margin: 0 0 5px 0; font-weight: 800; }
-        .subtitle { color: #8e969e; font-size: 14px; margin-bottom: 20px; }
-        .balance-box {
-            background: rgba(255,255,255,0.05);
-            padding: 15px;
-            border-radius: 12px;
-            margin: 15px 0;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .balance-title { font-size: 13px; color: #8e969e; text-transform: uppercase; letter-spacing: 0.5px; }
-        .accent { color: #4caf50; font-weight: bold; font-size: 22px; margin-top: 5px; }
-        .profit { color: #ff9800; font-weight: bold; font-size: 26px; margin-top: 5px; }
-        .stats {
+        h1 {
+            font-size: 24px;
+            color: #f1c40f;
+            margin-bottom: 5px;
             display: flex;
-            justify-content: space-around;
-            background: rgba(0,0,0,0.15);
-            padding: 12px;
-            border-radius: 10px;
-            margin: 20px 0;
-            font-size: 14px;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
-        .btn {
-            display: block;
-            width: 100%;
-            background: #f4c430;
-            color: #111111;
+        .subtitle {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 25px;
+        }
+        .stat-box {
+            background-color: #17212b;
+            border-radius: 12px;
             padding: 15px;
-            margin: 10px 0;
+            margin-bottom: 15px;
+            border: 1px solid #2b394a;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+        }
+        .balance .stat-value { color: #2ecc71; }
+        .profit .stat-value { color: #e67e22; }
+        
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        .meta-box {
+            background-color: #17212b;
+            border-radius: 12px;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #2b394a;
+        }
+        .meta-box span {
+            display: block;
+            font-weight: bold;
+            color: #f1c40f;
+            margin-top: 3px;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.1s;
+            transition: background 0.2s;
+            margin-bottom: 10px;
         }
-        .btn:active { transform: scale(0.98); }
-        .btn-close { background: #e53935; color: white; }
+        .btn-claim {
+            background-color: #f1c40f;
+            color: #1c222e;
+        }
+        .btn-claim:active { background-color: #d4ac0d; }
+        .btn-close {
+            background-color: #e74c3c;
+            color: #ffffff;
+        }
+        .btn-close:active { background-color: #c0392b; }
     </style>
 </head>
 <body>
+
     <div class="container">
         <h1>🐜 СИЛА МУРАВЬЕВ</h1>
         <div class="subtitle">Муравьиная ферма в реальном времени</div>
-        
-        <div class="balance-box">
-            <div class="balance-title">💵 Баланс для вывода</div>
-            <div class="accent" id="balance">0.000156 USDT</div>
+
+        <div class="stat-box balance">
+            <div class="stat-label">💵 Баланс для вывода</div>
+            <div class="stat-value" id="balance-view">0.000000 USDT</div>
         </div>
 
-        <div class="balance-box">
-            <div class="balance-title">💰 Накопленная прибыль</div>
-            <div class="profit" id="profit">0.0000000 USDT</div>
+        <div class="stat-box profit">
+            <div class="stat-label">💰 Накопленная прибыль</div>
+            <div class="stat-value" id="profit-view">0.000000 USDT</div>
         </div>
 
-        <div class="stats">
-            <div>📦 Муравьи: <span id="ants" style="color:#f4c430; font-weight:bold;">10</span> шт.</div>
-            <div>🔒 Депозит: <span id="deposit" style="color:#f4c430; font-weight:bold;">10.00</span> USDT</div>
+        <div class="meta-grid">
+            <div class="meta-box">📦 Муравьи:<span id="ants-view">0 шт.</span></div>
+            <div class="meta-box">🔒 Депозит:<span id="deposit-view">0.00 USDT</span></div>
         </div>
 
-        <button class="btn" onclick="collectProfit()">💸 Снять прибыль</button>
-        <button class="btn btn-close" onclick="window.Telegram.WebApp.close()">❌ Закрыть ферму</button>
+        <button class="btn-claim" onclick="claimProfit()">💸 Снять прибыль</button>
+        <button class="btn-close" onclick="closeWebApp()">❌ Закрыть ферму</button>
     </div>
 
     <script>
-        // Инициализация WebApp Telegram
+        // Инициализируем Telegram WebApp API
         const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        tg.expand(); // Разворачиваем окно на максимум
 
-        // Базовые значения (синхронизируются визуально)
-        let ants = 10;
-        let deposit = 10.0;
-        let balance = 0.000156;
-        let profit = 0.000005;
+        // Разбираем параметры из ссылки (URL), которые прислал нам бот
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        let userId = urlParams.get('id') || '0';
+        let antsCount = parseInt(urlParams.get('ants')) || 0;
+        let deposit = parseFloat(urlParams.get('deposit')) || 0.0;
+        let currentBalance = parseFloat(urlParams.get('balance')) || 0.0;
+        
+        // Каждую секунду 1 муравей приносит, например, 0.00000001 USDT (подправь скорость под свой маркетинг!)
+        const PROFIT_PER_ANT_PER_SECOND = 0.00000001; 
+        let accumulatedProfit = 0.0;
 
-        document.getElementById('ants').innerText = ants;
-        document.getElementById('deposit').innerText = deposit.toFixed(2);
-        document.getElementById('balance').innerText = balance.toFixed(6) + " USDT";
+        // Выводим стартовые данные из базы на экран
+        document.getElementById('ants-view').innerText = antsCount + ' шт.';
+        document.getElementById('deposit-view').innerText = deposit.toFixed(2) + ' USDT';
+        document.getElementById('balance-view').innerText = currentBalance.toFixed(6) + ' USDT';
+        document.getElementById('profit-view').innerText = accumulatedProfit.toFixed(8) + ' USDT';
 
-        // ЭФФЕКТ ЖИВОГО СЧЕТЧИКА (Каждую секунду увеличиваем прибыль прямо на экране)
+        // Логика таймера: прибыль увеличивается каждую секунду в реальном времени
         setInterval(() => {
-            if (ants > 0) {
-                // Формула: (1 USDT * 10% годовых) / 365 дней / 86400 секунд
-                let profitPerSecond = (1.0 * 0.10) / 365 / 86400;
-                profit += ants * profitPerSecond;
-                document.getElementById('profit').innerText = profit.toFixed(7) + " USDT";
+            if (antsCount > 0) {
+                accumulatedProfit += antsCount * PROFIT_PER_ANT_PER_SECOND;
+                document.getElementById('profit-view').innerText = accumulatedProfit.toFixed(8) + ' USDT';
             }
         }, 1000);
 
-        function collectProfit() {
-            if (profit > 0) {
-                balance += profit;
-                tg.sendData(JSON.stringify({action: "collect", amount: profit}));
-                profit = 0;
-                document.getElementById('balance').innerText = balance.toFixed(6) + " USDT";
-                document.getElementById('profit').innerText = "0.0000000 USDT";
-                tg.showAlert("💰 Прибыль успешно переведена на баланс вывода!");
-            } else {
-                tg.showAlert("❌ Нет прибыли для снятия.");
+        // Функция кнопки "Снять прибыль"
+        function claimProfit() {
+            if (accumulatedProfit <= 0) {
+                tg.showAlert("У вас пока нет накопленной прибыли для снятия!");
+                return;
             }
+            // Отправляем данные обратно боту в чат!
+            tg.sendData(`claim_profit:${accumulatedProfit.toFixed(8)}`);
+            tg.close();
+        }
+
+        // Функция кнопки "Закрыть ферму"
+        function closeWebApp() {
+            tg.close();
         }
     </script>
 </body>
