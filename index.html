@@ -2,179 +2,185 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Сила Муравьев</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Муравьиная Ферма LIVE</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #1c222e;
+            background: linear-gradient(135deg, #1e1e2f, #111118);
             color: #ffffff;
             margin: 0;
             padding: 20px;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             min-height: 100vh;
             box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
         }
+
         .container {
-            background-color: #242f3d;
-            border-radius: 20px;
-            padding: 25px;
             width: 100%;
-            max-width: 360px;
+            max-width: 400px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            backdrop-filter: blur(10px);
+            border: 1px rgba(255, 255, 255, 0.1) solid;
             text-align: center;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            box-sizing: border-box;
         }
+
         h1 {
             font-size: 24px;
-            color: #f1c40f;
-            margin-bottom: 5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
+            margin-bottom: 20px;
+            color: #4caf50;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
-        .subtitle {
-            font-size: 14px;
-            color: #7f8c8d;
-            margin-bottom: 25px;
-        }
-        .stat-box {
-            background-color: #17212b;
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.2);
             border-radius: 12px;
             padding: 15px;
             margin-bottom: 15px;
-            border: 1px solid #2b394a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #4caf50;
         }
+
         .stat-label {
-            font-size: 12px;
-            color: #7f8c8d;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-        }
-        .stat-value {
-            font-size: 22px;
-            font-weight: bold;
-        }
-        .balance .stat-value { color: #2ecc71; }
-        .profit .stat-value { color: #e67e22; }
-        
-        .meta-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 25px;
-        }
-        .meta-box {
-            background-color: #17212b;
-            border-radius: 12px;
-            padding: 10px;
             font-size: 14px;
-            border: 1px solid #2b394a;
+            color: #aaaaaa;
+            text-transform: uppercase;
         }
-        .meta-box span {
-            display: block;
+
+        .stat-value {
+            font-size: 18px;
             font-weight: bold;
-            color: #f1c40f;
-            margin-top: 3px;
+            font-variant-numeric: tabular-nums;
         }
-        button {
-            width: 100%;
-            padding: 15px;
+
+        .profit-card {
+            border-left-color: #ff9800;
+            background: rgba(255, 152, 0, 0.05);
+        }
+
+        .profit-value {
+            color: #ff9800;
+            font-size: 22px;
+        }
+
+        .btn {
+            background: linear-gradient(90deg, #4caf50, #45a049);
+            color: white;
             border: none;
-            border-radius: 12px;
-            font-size: 16px;
+            padding: 15px 30px;
+            font-size: 18px;
             font-weight: bold;
+            border-radius: 12px;
             cursor: pointer;
-            transition: background 0.2s;
-            margin-bottom: 10px;
+            width: 100%;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            transition: transform 0.1s, box-shadow 0.1s;
         }
-        .btn-claim {
-            background-color: #f1c40f;
-            color: #1c222e;
+
+        .btn:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
         }
-        .btn-claim:active { background-color: #d4ac0d; }
-        .btn-close {
-            background-color: #e74c3c;
-            color: #ffffff;
+
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666666;
         }
-        .btn-close:active { background-color: #c0392b; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>🐜 СИЛА МУРАВЬЕВ</h1>
-        <div class="subtitle">Муравьиная ферма в реальном времени</div>
+        <h1>🐜 Муравьиная Ферма</h1>
 
-        <div class="stat-box balance">
-            <div class="stat-label">💵 Баланс для вывода</div>
-            <div class="stat-value" id="balance-view">0.000000 USDT</div>
+        <div class="stat-card">
+            <span class="stat-label">Количество муравьев</span>
+            <span class="stat-value" id="ants-count">0 шт.</span>
         </div>
 
-        <div class="stat-box profit">
-            <div class="stat-label">💰 Накопленная прибыль</div>
-            <div class="stat-value" id="profit-view">0.000000 USDT</div>
+        <div class="stat-card">
+            <span class="stat-label">Твой депозит</span>
+            <span class="stat-value" id="deposit-value">0.00 USDT</span>
         </div>
 
-        <div class="meta-grid">
-            <div class="meta-box">📦 Муравьи:<span id="ants-view">0 шт.</span></div>
-            <div class="meta-box">🔒 Депозит:<span id="deposit-view">0.00 USDT</span></div>
+        <div class="stat-card">
+            <span class="stat-label">Баланс для вывода</span>
+            <span class="stat-value" id="balance-value" style="color: #4caf50;">0.000000 USDT</span>
         </div>
 
-        <button class="btn-claim" onclick="claimProfit()">💸 Снять прибыль</button>
-        <button class="btn-close" onclick="closeWebApp()">❌ Закрыть ферму</button>
+        <div class="stat-card profit-card">
+            <span class="stat-label">Накопленная прибыль</span>
+            <span class="stat-value profit-value" id="profit-value">0.00000000 USDT</span>
+        </div>
+
+        <button class="btn" id="claim-btn">💰 СНЯТЬ ПРИБЫЛЬ</button>
+        
+        <div class="footer">Доходность: 10% годовых в реальном времени</div>
     </div>
 
     <script>
-        // Инициализируем Telegram WebApp API
+        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Разворачиваем окно на максимум
+        tg.expand(); // Расширяем на весь экран телефона
 
-        // Разбираем параметры из ссылки (URL), которые прислал нам бот
+        // Парсинг параметров из URL-ссылки от бота
         const urlParams = new URLSearchParams(window.location.search);
+        const antsCount = parseInt(urlParams.get('ants')) || 0;
+        const currentDeposit = parseFloat(urlParams.get('deposit')) || 0.0;
+        const currentBalance = parseFloat(urlParams.get('balance')) || 0.0;
         
-        let userId = urlParams.get('id') || '0';
-        let antsCount = parseInt(urlParams.get('ants')) || 0;
-        let deposit = parseFloat(urlParams.get('deposit')) || 0.0;
-        let currentBalance = parseFloat(urlParams.get('balance')) || 0.0;
-        
-        // Каждую секунду 1 муравей приносит, например, 0.00000001 USDT (подправь скорость под свой маркетинг!)
-        const PROFIT_PER_ANT_PER_SECOND = 0.00000001; 
-        let accumulatedProfit = 0.0;
+        // ИСПРАВЛЕНО: Принимаем прибыль, набежавшую в фоне из базы бота!
+        const initialProfit = parseFloat(urlParams.get('profit')) || 0.0;
 
-        // Выводим стартовые данные из базы на экран
-        document.getElementById('ants-view').innerText = antsCount + ' шт.';
-        document.getElementById('deposit-view').innerText = deposit.toFixed(2) + ' USDT';
-        document.getElementById('balance-view').innerText = currentBalance.toFixed(6) + ' USDT';
-        document.getElementById('profit-view').innerText = accumulatedProfit.toFixed(8) + ' USDT';
+        // Отображаем стартовые статичные данные на экране
+        document.getElementById('ants-count').innerText = antsCount + ' шт.';
+        document.getElementById('deposit-value').innerText = currentDeposit.toFixed(2) + ' USDT';
+        document.getElementById('balance-value').innerText = currentBalance.toFixed(6) + ' USDT';
 
-        // Логика таймера: прибыль увеличивается каждую секунду в реальном времени
-        setInterval(() => {
-            if (antsCount > 0) {
-                accumulatedProfit += antsCount * PROFIT_PER_ANT_PER_SECOND;
-                document.getElementById('profit-view').innerText = accumulatedProfit.toFixed(8) + ' USDT';
-            }
-        }, 1000);
+        // Логика живого счетчика прибыли
+        // Переменная стартует НЕ С НУЛЯ, а с накопленной в боте суммы!
+        let accumulatedProfit = initialProfit;
+        document.getElementById('profit-value').innerText = accumulatedProfit.toFixed(8) + ' USDT';
 
-        // Функция кнопки "Снять прибыль"
-        function claimProfit() {
+        // Скорость майнинга: 10% годовых для одного муравья (цена муравья = 1$)
+        const profitPerSecondForOneAnt = (1.0 * 0.10) / 365 / 86400;
+        const totalProfitPerSecond = antsCount * profitPerSecondForOneAnt;
+
+        // Запуск таймера обновления экрана (обновляем каждые 100 миллисекунд для плавности)
+        if (antsCount > 0) {
+            setInterval(() => {
+                accumulatedProfit += totalProfitPerSecond * 0.1;
+                document.getElementById('profit-value').innerText = accumulatedProfit.toFixed(8) + ' USDT';
+            }, 100);
+        }
+
+        // Обработка клика по кнопке «СНЯТЬ ПРИБЫЛЬ»
+        document.getElementById('claim-btn').addEventListener('click', () => {
             if (accumulatedProfit <= 0) {
                 tg.showAlert("У вас пока нет накопленной прибыли для снятия!");
                 return;
             }
-            // Отправляем данные обратно боту в чат!
-            tg.sendData(`claim_profit:${accumulatedProfit.toFixed(8)}`);
-            tg.close();
-        }
 
-        // Функция кнопки "Закрыть ферму"
-        function closeWebApp() {
+            // Отправляем точную цифру накопленной прибыли обратно боту
+            tg.sendData("claim_profit:" + accumulatedProfit.toFixed(8));
+            
+            // Закрываем окно WebApp
             tg.close();
-        }
+        });
     </script>
 </body>
 </html>
