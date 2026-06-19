@@ -38,27 +38,40 @@
     <button class="btn btn-refresh" onclick="triggerAction('refresh')">🔄 Синхронизировать / Обновить</button>
 
     <script>
+        // Инициализируем Telegram Web App
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Разворачиваем приложение на весь экран
+        tg.expand(); // Разворачиваем приложение на максимум
 
-        // Читаем параметры из ссылки, которую формирует наш Python-бот
+        // Способ 1: Пытаемся прочитать данные из параметров ссылки URL
         const urlParams = new URLSearchParams(window.location.search);
-        
-        document.getElementById('user-id').innerText = urlParams.get('id') || 'Не определен';
-        document.getElementById('ants-count').innerText = (urlParams.get('ants') || '0') + ' шт.';
-        document.getElementById('deposit').innerText = (urlParams.get('deposit') || '0.00') + ' USDT';
-        
-        // Показываем начисления ровно до 9 знаков после запятой
-        const rawProfit = parseFloat(urlParams.get('profit') || 0);
-        document.getElementById('profit').innerText = rawProfit.toFixed(9) + ' USDT';
-        
-        const rawBalance = parseFloat(urlParams.get('balance') || 0);
-        document.getElementById('balance').innerText = rawBalance.toFixed(9) + ' USDT';
+        let userId = urlParams.get('id');
+        let ants = urlParams.get('ants') || '0';
+        let deposit = urlParams.get('deposit') || '0.00';
+        let profit = urlParams.get('profit') || '0.000000000';
+        let balance = urlParams.get('balance') || '0.000000000';
 
-        // Функция отправки сигналов сайтом обратно боту
+        // Способ 2: Если ссылка обрезана, берем ID напрямую из встроенного профиля Telegram
+        if (!userId && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            userId = tg.initDataUnsafe.user.id;
+        }
+
+        // Выводим данные на экран фермы
+        document.getElementById('user-id').innerText = userId ? userId : 'Ошибка чтения ID';
+        document.getElementById('ants-count').innerText = ants + ' шт.';
+        document.getElementById('deposit').innerText = deposit + ' USDT';
+        
+        // Превращаем в числа и выводим строго до 9 знаков
+        document.getElementById('profit').innerText = parseFloat(profit).toFixed(9) + ' USDT';
+        document.getElementById('balance').innerText = parseFloat(balance).toFixed(9) + ' USDT';
+
+        // Функция отправки скрытых команд обратно боту в Python
         function triggerAction(actionName) {
-            tg.sendData(actionName); // Передаем текст действия (buy, claim, refresh) в Python
-            tg.close(); // Закрываем мини-приложение, чтобы пользователь увидел текстовый ответ в чате
+            try {
+                tg.sendData(actionName); // Передаем текст действия (buy, claim, refresh)
+                tg.close(); // Закрываем окно, чтобы пользователь увидел ответ бота в чате
+            } catch (e) {
+                alert("Ошибка отправки данных боту. Откройте приложение заново через кнопку меню.");
+            }
         }
     </script>
 </body>
