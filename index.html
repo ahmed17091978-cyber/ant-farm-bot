@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сила Муравья</title>
+    <!-- Официальный скрипт Telegram для связи сайта с вашим Python-ботом -->
+    <script src="https://telegram.org"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #e0e0e0; padding: 20px; text-align: center; margin: 0; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 20px; border: 1px solid #333; }
+        h1 { color: #ffb300; font-size: 24px; margin-top: 0; }
+        .stat { font-size: 16px; margin: 10px 0; border-bottom: 1px solid #2a2a2a; padding-bottom: 8px; text-align: left; }
+        .stat span { float: right; font-weight: bold; color: #fff; }
+        .btn { display: block; width: 100%; padding: 15px; margin: 12px 0; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-buy { background-color: #4CAF50; color: white; }
+        .btn-claim { background-color: #ff9800; color: white; }
+        .btn-refresh { background-color: #2196F3; color: white; }
+        .btn:active { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>🐜 СИЛА МУРАВЬЯ</h1>
+        <p style="color: #888; font-size: 14px;">Ваша персональная ферма добычи прибыли</p>
+        
+        <div class="stat">👤 Мой Telegram ID: <span id="user-id">Загрузка...</span></div>
+        <div class="stat">🐜 Всего муравьев: <span id="ants-count">0 шт.</span></div>
+        <div class="stat">📥 Мой депозит (USDT): <span id="deposit">0.00</span></div>
+        <div class="stat">💰 Накопленная прибыль: <span id="profit" style="color: #ffb300;">0.000000000</span></div>
+        <div class="stat">💵 Доступный баланс: <span id="balance" style="color: #4CAF50;">0.000000000</span></div>
+    </div>
+
+    <!-- Кнопки управления отправляют команды обратно на VPS-сервер -->
+    <button class="btn btn-buy" onclick="triggerAction('buy')">🛒 Купить муравья (1 USDT)</button>
+    <button class="btn btn-claim" onclick="triggerAction('claim')">💸 Снять накопленную прибыль</button>
+    <button class="btn btn-refresh" onclick="triggerAction('refresh')">🔄 Синхронизировать / Обновить</button>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Разворачиваем приложение на весь экран
+
+        // Читаем параметры из ссылки, которую формирует наш Python-бот
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        document.getElementById('user-id').innerText = urlParams.get('id') || 'Не определен';
+        document.getElementById('ants-count').innerText = (urlParams.get('ants') || '0') + ' шт.';
+        document.getElementById('deposit').innerText = (urlParams.get('deposit') || '0.00') + ' USDT';
+        
+        // Показываем начисления ровно до 9 знаков после запятой
+        const rawProfit = parseFloat(urlParams.get('profit') || 0);
+        document.getElementById('profit').innerText = rawProfit.toFixed(9) + ' USDT';
+        
+        const rawBalance = parseFloat(urlParams.get('balance') || 0);
+        document.getElementById('balance').innerText = rawBalance.toFixed(9) + ' USDT';
+
+        // Функция отправки сигналов сайтом обратно боту
+        function triggerAction(actionName) {
+            tg.sendData(actionName); // Передаем текст действия (buy, claim, refresh) в Python
+            tg.close(); // Закрываем мини-приложение, чтобы пользователь увидел текстовый ответ в чате
+        }
+    </script>
+</body>
+</html>
