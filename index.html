@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Сила Муравья</title>
-    <!-- Официальный скрипт Telegram для связи сайта с вашим Python-ботом -->
+    <!-- Официальный скрипт Telegram Web App -->
     <script src="https://telegram.org"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #e0e0e0; padding: 20px; text-align: center; margin: 0; }
@@ -32,47 +32,47 @@
         <div class="stat">💵 Доступный баланс: <span id="balance" style="color: #4CAF50;">0.000000000</span></div>
     </div>
 
-    <!-- Кнопки управления отправляют команды обратно на VPS-сервер -->
     <button class="btn btn-buy" onclick="triggerAction('buy')">🛒 Купить муравья (1 USDT)</button>
     <button class="btn btn-claim" onclick="triggerAction('claim')">💸 Снять накопленную прибыль</button>
     <button class="btn btn-refresh" onclick="triggerAction('refresh')">🔄 Синхронизировать / Обновить</button>
 
     <script>
-        // Инициализируем Telegram Web App
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Разворачиваем приложение на максимум
+        tg.expand();
 
-        // Способ 1: Пытаемся прочитать данные из параметров ссылки URL
-        const urlParams = new URLSearchParams(window.location.search);
-        let userId = urlParams.get('id');
-        let ants = urlParams.get('ants') || '0';
-        let deposit = urlParams.get('deposit') || '0.00';
-        let profit = urlParams.get('profit') || '0.000000000';
-        let balance = urlParams.get('balance') || '0.000000000';
+        // Функция получения параметров
+        function getParameterByName(name, url = window.location.href) {
+            name = name.replace(/[\[\]]/g, '\\$&');
+            var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
 
-        // Способ 2: Если ссылка обрезана, берем ID напрямую из встроенного профиля Telegram
+        // Читаем данные из ссылки
+        let userId = getParameterByName('id');
+        let ants = getParameterByName('ants') || '0';
+        let deposit = getParameterByName('deposit') || '0.00';
+        let profit = getParameterByName('profit') || '0.000000000';
+        let balance = getParameterByName('balance') || '0.000000000';
+
+        // Резервный способ чтения ID, если Telegram обрезал URL
         if (!userId && tg.initDataUnsafe && tg.initDataUnsafe.user) {
             userId = tg.initDataUnsafe.user.id;
         }
 
-        // Выводим данные на экран фермы
-        document.getElementById('user-id').innerText = userId ? userId : 'Ошибка чтения ID';
+        // Выводим данные на экран
+        document.getElementById('user-id').innerText = userId ? userId : 'Не определен';
         document.getElementById('ants-count').innerText = ants + ' шт.';
-        document.getElementById('deposit').innerText = deposit + ' USDT';
-        
-        // Превращаем в числа и выводим строго до 9 знаков
+        document.getElementById('deposit').innerText = parseFloat(deposit).toFixed(2) + ' USDT';
         document.getElementById('profit').innerText = parseFloat(profit).toFixed(9) + ' USDT';
         document.getElementById('balance').innerText = parseFloat(balance).toFixed(9) + ' USDT';
 
-        // Функция отправки скрытых команд обратно боту в Python
         function triggerAction(actionName) {
-            try {
-                tg.sendData(actionName); // Передаем текст действия (buy, claim, refresh)
-                tg.close(); // Закрываем окно, чтобы пользователь увидел ответ бота в чате
-            } catch (e) {
-                alert("Ошибка отправки данных боту. Откройте приложение заново через кнопку меню.");
-            }
+            tg.sendData(actionName);
+            tg.close();
         }
     </script>
 </body>
-</html> 
+</html>
